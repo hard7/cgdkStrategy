@@ -14,16 +14,31 @@
 
 
 struct TileNode {
+    typedef std::pair<int, int> Point;
     int x, y;
-    std::vector<unsigned> nb;
+    std::vector<unsigned> nb_RM;
+    std::vector<TileNode*> neighbors;
+    TileNode() : x(-1), y(-1) {}
     TileNode(int x_, int y_) : x(x_), y(y_) {}
     TileNode(std::pair<int, int> const& p) : x(p.first), y(p.second) {}
-    void appendLink(int i) { nb.push_back(static_cast<unsigned>(i)); }
+    void appendLink(int i) { nb_RM.push_back(static_cast<unsigned>(i)); }
+    void appendLink(TileNode* node) { neighbors.push_back((node)); }
 };
 
+std::ostream& operator<<(std::ostream& os, TileNode const& node) {
+    os << "( [" << node.x << ", " << node.y << "] -> ";
+    for(TileNode* nearest : node.neighbors) {
+        os <<" [" << nearest->x << ", " << nearest->y << "]";
+    }
+    os << " )";
+    return os;
+}
+
 struct MyStrategy::Impl {
+    typedef std::pair<int, int> Point;
+
     model::World const* world;
-    std::vector<TileNode> tileGraph;
+    std::map<Point, TileNode> tileGraph;
 
     Impl() : world(nullptr) { }
     void updateWorld(model::World const* world_) {
@@ -55,19 +70,7 @@ struct MyStrategy::Impl {
     }
 
 private:
-    static std::vector<TileNode> makeTileGraph(std::vector<std::vector<model::TileType> > const& tiles) {
-        std::vector<TileNode> tileGraph;
-        int dimY = static_cast<int>(tiles.size());
-        int dimX = static_cast<int>(tiles.at(0).size());
-
-        typedef std::pair<int, int> Point;
-        std::map<Point, int> visited;
-        for(int j=0; j<dimY; j++) {
-            for(int i=0; i<dimX; i++) {
-                visited[{i, j}] = -1;
-            }
-        }
-
+    static std::map<Point, TileNode> makeTileGraph(std::vector<std::vector<model::TileType> > const& tiles) {
         auto getNeighbors = [](Point const& p, model::TileType t) -> std::vector<Point>  {
             using namespace model;
             int x = p.first, y = p.second;
@@ -88,41 +91,56 @@ private:
                 default: throw std::logic_error("Error in MyStrategy::Impl::getNeighbors: _UNKNOWN_TILE_TYPE_");
             }
         };
+        using namespace std;
+
+//        std::vector<TileNode> tileGraph;
+        std::map<Point, TileNode> tileGraph_map;
+        int dimY = static_cast<int>(tiles.size());
+        int dimX = static_cast<int>(tiles.at(0).size());
+
+        std::map<Point, int> visited;
+        for(int j=0; j<dimY; j++) {
+            for(int i=0; i<dimX; i++) {
+                visited[{i, j}] = -1;
+            }
+        }
 
         int x, y;
-        int ccnum = 0;
-        int p_idx, n_idx;
+        int ccNum = 0;
         std::stack<Point> stack_;
         for(int j=0; j<dimY; j++) {
             for(int i=0; i<dimX; i++) {
                 const Point BASE(i, j);
-
-                if(visited[BASE] == -1) {
+                if(tileGraph_map.find(BASE) == tileGraph_map.end()) {
                     stack_.push(BASE);
-                    ccnum++;
+                    ccNum++;
                 }
                 while(not stack_.empty()) {
                     Point p = stack_.top(); stack_.pop();
-                    tileGraph.push_back(TileNode(p));
-                    visited[p] = p_idx = static_cast<int>(tileGraph.size() - 1);
-//                    TileNode& parent = tileGraph.back();
+                    if(tileGraph_map.find(p) != tileGraph_map.end()) {
+                        continue;
+                    }
+
+                    tileGraph_map[p] = TileNode(p);
                     const std::vector<Point> neighbors
                             = getNeighbors(p, tiles[p.first][p.second]);
                     for(Point const& n : neighbors) {
                         x = n.first; y = n.second;
-                        assert(x >= 0 and x < dimX);
-                        assert(y >= 0 and y < dimY);
-                        n_idx = visited[n];
-                        if(n_idx < 0) stack_.push(n);
+                        assert(x >= 0 and x < dimX and y >= 0 and y < dimY);
+//                        n_idx = visited[n];
+                        if(tileGraph_map.find(n) == tileGraph_map.end()) {
+                            stack_.push(n);
+                        }
                         else {
-                            tileGraph[p_idx].appendLink(n_idx);
-                            tileGraph[n_idx].appendLink(p_idx);
+                            tileGraph_map[p].
+                                    appendLink(&tileGraph_map[n]);
+                            tileGraph_map[n].appendLink(&tileGraph_map[p]);
                         }
                     }
                 }
             }
         }
-        return std::move(tileGraph);
+        return std::move(tileGraph_map);
     }
 
 };
@@ -140,10 +158,9 @@ void MyStrategy::move(const Car& self, const World& world, const Game& game, Mov
     int py = static_cast<int>(car.getY() / 800);
     cout << car.getAngle() / (2 * M_PI) * 360 << endl;
 
-    cout << impl->tileGraph[0].x << endl;
-    cout << impl->tileGraph[0].y << endl;
-    cout << impl->tileGraph[0].nb[0] << endl;
-    cout << impl->tileGraph[0].nb[1] << endl;
+    cout << impl->tileGraph[{0, 0}] << endl;
+
+    while
 
     exit(1);
 }
