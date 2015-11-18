@@ -159,7 +159,7 @@ void MyStrategy::move(const Car& self, const World& world, const Game& game, Mov
     cout << car.getAngle() / (2 * M_PI) * 360 << endl;
 
     cout << impl->tileGraph[{0, 0}] << endl;
-
+    
     exit(1);
 }
 
