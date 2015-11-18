@@ -9,7 +9,7 @@ class MyStrategy : public Strategy {
 public:
     MyStrategy();
 
-    void move(const model::Hockeyist& self, const model::World& world, const model::Game& game, model::Move& move);
+    void move(const model::Car& self, const model::World& world, const model::Game& game, model::Move& move) override;
 };
 
 #endif

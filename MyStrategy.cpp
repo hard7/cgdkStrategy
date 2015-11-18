@@ -9,10 +9,10 @@
 using namespace model;
 using namespace std;
 
-void MyStrategy::move(const Hockeyist& self, const World& world, const Game& game, Move& move) {
-    move.setSpeedUp(-1.0);
-    move.setTurn(PI);
-    move.setAction(STRIKE);
+void MyStrategy::move(const Car& self, const World& world, const Game& game, Move& move) {
+//    move.setSpeedUp(-1.0);
+//    move.setTurn(PI);
+//    move.setAction(STRIKE);
 }
 
 MyStrategy::MyStrategy() { }
