@@ -8,9 +8,12 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <set>
 #include <stack>
+#include <queue>
 #include <stdexcept>
 #include <cassert>
+#include <tuple>
 
 
 struct TileNode {
@@ -23,6 +26,7 @@ struct TileNode {
     TileNode(std::pair<int, int> const& p) : x(p.first), y(p.second) {}
     void appendLink(int i) { nb_RM.push_back(static_cast<unsigned>(i)); }
     void appendLink(TileNode* node) { neighbors.push_back((node)); }
+    operator Point() const { return std::make_pair(x, y); };
 };
 
 std::ostream& operator<<(std::ostream& os, TileNode const& node) {
@@ -44,7 +48,28 @@ struct MyStrategy::Impl {
     void updateWorld(model::World const* world_) {
         if(world == nullptr) tileGraph = makeTileGraph(world_->getTilesXY());
         if(world != world_) world = world_;
+    }
 
+    std::vector<Point> shortestPath(Point const& from, Point const& to) const {
+        std::vector<Point> path;
+        std::set<Point> visited;
+        auto fromIt = tileGraph.find(from);
+        auto toIt = tileGraph.find(to);
+        assert(fromIt != tileGraph.end() and toIt != tileGraph.end());
+        if(fromIt == toIt) return std::move(path);
+        TileNode const* target = &fromIt->second;
+        std::queue<TileNode const*> queue_;
+        queue_.push(&fromIt->second);
+        bool inserted;
+        while(not queue_.empty()) {
+            TileNode const* current = queue_.front(); queue_.pop();
+            std::tie(std::ignore, inserted) = visited.insert(*current);
+            if(inserted) {
+                for(TileNode const* nearest : current->neighbors) {
+                    queue_.push(nearest);
+                }
+            }
+        }
     }
 
     void showTilesXY() const {
@@ -92,9 +117,7 @@ private:
             }
         };
         using namespace std;
-
-//        std::vector<TileNode> tileGraph;
-        std::map<Point, TileNode> tileGraph_map;
+        std::map<Point, TileNode> tileGraph;
         int dimY = static_cast<int>(tiles.size());
         int dimX = static_cast<int>(tiles.at(0).size());
 
@@ -111,36 +134,35 @@ private:
         for(int j=0; j<dimY; j++) {
             for(int i=0; i<dimX; i++) {
                 const Point BASE(i, j);
-                if(tileGraph_map.find(BASE) == tileGraph_map.end()) {
+                if(tileGraph.find(BASE) == tileGraph.end()) {
                     stack_.push(BASE);
                     ccNum++;
                 }
                 while(not stack_.empty()) {
                     Point p = stack_.top(); stack_.pop();
-                    if(tileGraph_map.find(p) != tileGraph_map.end()) {
+                    if(tileGraph.find(p) != tileGraph.end()) {
                         continue;
                     }
 
-                    tileGraph_map[p] = TileNode(p);
+                    tileGraph[p] = TileNode(p);
                     const std::vector<Point> neighbors
                             = getNeighbors(p, tiles[p.first][p.second]);
                     for(Point const& n : neighbors) {
                         x = n.first; y = n.second;
                         assert(x >= 0 and x < dimX and y >= 0 and y < dimY);
 //                        n_idx = visited[n];
-                        if(tileGraph_map.find(n) == tileGraph_map.end()) {
+                        if(tileGraph.find(n) == tileGraph.end()) {
                             stack_.push(n);
                         }
                         else {
-                            tileGraph_map[p].
-                                    appendLink(&tileGraph_map[n]);
-                            tileGraph_map[n].appendLink(&tileGraph_map[p]);
+                            tileGraph[p].appendLink(&tileGraph[n]);
+                            tileGraph[n].appendLink(&tileGraph[p]);
                         }
                     }
                 }
             }
         }
-        return std::move(tileGraph_map);
+        return std::move(tileGraph);
     }
 
 };
@@ -156,10 +178,10 @@ void MyStrategy::move(const Car& self, const World& world, const Game& game, Mov
     Car const& car = self;
     int px = static_cast<int>(car.getX() / 800);
     int py = static_cast<int>(car.getY() / 800);
-    cout << car.getAngle() / (2 * M_PI) * 360 << endl;
+    cout << car.getAngle() / (2 * PI) * 360 << endl;
 
     cout << impl->tileGraph[{0, 0}] << endl;
-    
+
     exit(1);
 }
 
