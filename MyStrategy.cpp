@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <tuple>
+#include <algorithm>
 
 
 struct TileNode {
@@ -52,7 +53,8 @@ struct MyStrategy::Impl {
 
     std::vector<Point> shortestPath(Point const& from, Point const& to) const {
         std::vector<Point> path;
-        std::set<Point> visited;
+        std::map<Point, Point> prev;
+
         auto fromIt = tileGraph.find(from);
         auto toIt = tileGraph.find(to);
         assert(fromIt != tileGraph.end() and toIt != tileGraph.end());
@@ -60,16 +62,26 @@ struct MyStrategy::Impl {
         TileNode const* target = &fromIt->second;
         std::queue<TileNode const*> queue_;
         queue_.push(&fromIt->second);
-        bool inserted;
-        while(not queue_.empty()) {
+        bool found = false;
+        while(not queue_.empty() and not found) {
             TileNode const* current = queue_.front(); queue_.pop();
-            std::tie(std::ignore, inserted) = visited.insert(*current);
-            if(inserted) {
-                for(TileNode const* nearest : current->neighbors) {
+            for(TileNode const* nearest : current->neighbors) {
+                if(prev.find(*nearest) == prev.end()) {
                     queue_.push(nearest);
+                    prev[*nearest] = *current;
+                    if(Point(*nearest) == to) found = true;
                 }
             }
         }
+        if(not found) std::move(path);
+
+        Point cur = to;
+        while(cur != from) {
+            path.push_back(cur);
+            cur = prev[cur];
+        }
+        std::reverse(path.begin(), path.end());
+        return std::move(path);
     }
 
     void showTilesXY() const {
@@ -181,6 +193,13 @@ void MyStrategy::move(const Car& self, const World& world, const Game& game, Mov
     cout << car.getAngle() / (2 * PI) * 360 << endl;
 
     cout << impl->tileGraph[{0, 0}] << endl;
+
+    auto path = impl->shortestPath({px, py}, {7, 6});
+    for(auto& point : path) {
+        cout << point << " ";
+    }
+    cout << endl;
+
 
     exit(1);
 }
