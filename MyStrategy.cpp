@@ -45,6 +45,9 @@ struct MyStrategy::Impl {
     model::World const* world;
     std::map<Point, TileNode> tileGraph;
 
+    std::vector<Point> path;
+    int pathPos;
+
     Impl() : world(nullptr) { }
     void updateWorld(model::World const* world_) {
         if(world == nullptr) tileGraph = makeTileGraph(world_->getTilesXY());
@@ -179,29 +182,68 @@ private:
 
 };
 
+TileNode::Point coordToTileIndies(double x, double y) {
+    return { int(x / 800), int(y / 800) };
+}
+
 using namespace model;
 using namespace std;
 
 void MyStrategy::move(const Car& self, const World& world, const Game& game, Move& move) {
-    impl->updateWorld(&world);
-    impl->showTilesXY();
-    impl->showWaypoints();
+    static double maxVelocity = 0;
 
-    Car const& car = self;
-    int px = static_cast<int>(car.getX() / 800);
-    int py = static_cast<int>(car.getY() / 800);
-    cout << car.getAngle() / (2 * PI) * 360 << endl;
+    int n = (self.getNextWaypointIndex() + 0) % world.getWaypoints().size();
+    int wx = world.getWaypoints()[n][0];
+    int wy = world.getWaypoints()[n][1];
+//    int wy = self.getNextWaypointY();
 
-    cout << impl->tileGraph[{0, 0}] << endl;
+    double wpx = wx * game.getTrackTileSize() + game.getTrackTileSize() / 2;
+    double wpy = wy * game.getTrackTileSize() + game.getTrackTileSize() / 2;
 
-    auto path = impl->shortestPath({px, py}, {7, 6});
-    for(auto& point : path) {
-        cout << point << " ";
+    double distance = self.getDistanceTo(wpx, wpy);
+    double angel = self.getAngleTo(wpx, wpy);
+
+    double velocity = std::abs(self.getSpeedX() * self.getSpeedX() + self.getSpeedY() * self.getSpeedY());
+
+    maxVelocity = std::max(maxVelocity, velocity);
+//    cout <<  "maxVelocity: " << maxVelocity << endl;
+
+    if(velocity > 200) move.setEnginePower(-0.7);
+    else move.setEnginePower(0.7);
+    //if(std::abs(angel) > PI / 8) move.setBrake(1);
+
+    cout << "angel: " << angel / (PI/2) << endl;
+
+    if(abs(angel) > (PI/8)) {
+        move.setWheelTurn(angel > 0 ? 1 : -1);
     }
-    cout << endl;
+    else move.setWheelTurn(angel / (PI/4));
+
+    if(abs(angel) > (PI/4) and velocity > 100) {
+        move.setEnginePower(-0.7);
+    }
 
 
-    exit(1);
+    if(world.getTick() < 230) move.setBrake(true);
+//    else move.setBrake(false);
 }
 
-MyStrategy::MyStrategy() : impl(new Impl) { }
+MyStrategy::MyStrategy() : impl(new Impl) {
+    cout << "Hello MyStrategy!" << endl;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
